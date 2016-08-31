@@ -23,8 +23,24 @@
 #endif
 
 
-#ifndef EXTRACT_IP_PACKET
-  #define EXTRACT_IP_PACKET( packet) \
+#ifndef EXTRACT_IP_HEAD
+  #define EXTRACT_IP_HEAD( packet) \
                 (struct ip *) ((packet) + ETHER_HEAD_LEN)
-#endif                
+#endif
 
+#ifndef EXTRACT_TCP_HEAD
+  #define EXTRACT_TCP_HEAD( packet)\
+                (struct tcphdr * ) ((packet) + ETHER_HEAD_LEN + IP_HEAD_LEN)
+
+#endif
+
+
+#ifndef GET_IP_SRC_STR
+  #define GET_IP_SRC_STR(iphdr) \
+                inet_ntoa((iphdr)->ip_src)
+#endif
+
+#ifndef GET_IP_DST_STR
+  #define GET_IP_DST_STR(iphdr) \
+                inet_ntoa((iphdr)->ip_dst)
+#endif
