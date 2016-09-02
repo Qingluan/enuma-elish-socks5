@@ -1,0 +1,9 @@
+{	
+	"server":"us2.qingluan.org",
+	"local_port":1080,
+	"password":"dark1",
+	"workers":10,
+	"server_port":3007,
+	"method":"aes-256-cfb",
+	"timeout":"600"
+}

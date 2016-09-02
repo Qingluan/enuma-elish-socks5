@@ -17,3 +17,10 @@
 #ifndef ICMP_HEAD_LEN
     #define ICMP_HEAD_LEN 4
 #endif
+
+#ifndef iph_port
+typedef struct iph_port{
+	u_short	sport;		/* source port */
+	u_short	dport;		/* destination port */
+}iph_port;
+#endif
