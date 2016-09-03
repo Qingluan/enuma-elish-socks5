@@ -7,6 +7,12 @@ if sys.argv[3] == "t" :
 	s.connect((sys.argv[1], int(sys.argv[2])))
 	s.send(b'what')
 	print(s.recvfrom(8192))
+	s.send(b'this >')
+	print(s.recvfrom(8192))
+	s.send(b'this >')
+	print(s.recvfrom(8192))
+	s.send(b'this >')
+	print(s.recvfrom(8192))
 else:
 	s.sendto(b'', (sys.argv[1], int(sys.argv[2])))
 	print(s.recvfrom(8192))

@@ -8,20 +8,23 @@ import os
 from socketserver import StreamRequestHandler, ThreadingTCPServer
 from termcolor import cprint
 
-from socks5.socks5_protocol import init_connect, request, inf, err, sus
+from socks5.socks5_protocol import init_connect, request
 from enuma_elish.ea_protocol import Enuma, Elish
+from utils import inf, err, sus, seq, sseq
 
 
 host = ("127.0.0.1", "1080")
 timeout = 600
 p_hash = b'\xc1\x8aE\xdb'
+BUF_MAX = 65535
 
 class Socks5Server(StreamRequestHandler):
     
     def __init__(self, *args, **kargs):
         umsg = os.urandom(7)
         self._remote_sock = None
-        self._seq = umsg[0]
+        self._seq = 0
+        self._sseq = 0
         self._addr = umsg[1:5]
         self._port = umsg[6]
         super(Socks5Server, self).__init__(*args, **kargs)
@@ -31,15 +34,17 @@ class Socks5Server(StreamRequestHandler):
         print('[%s] socks connection from %s' % (time.ctime(), self.client_address))
         sock = self.connection
         data = b''
-        data += sock.recv(8192)
+        data += sock.recv(BUF_MAX)
         if not data:
             self.connection.close()
             return
         _, addr, port, payload = Enuma(data, p_hash)
-        sus("first payload : {} ".format(payload))
+        # sus("first payload : {} ".format(payload))
         self._remote_sock = self.create_remote(addr, port) 
-        inf("send first payload")
-        self._remote_sock.send(payload)
+        # inf("send first payload")
+        sseq(self._seq, payload)
+        self._seq += 1
+        self._write(self._remote_sock, payload)
         self.handle_chat(sock, self._remote_sock)
 
     def create_remote(self, ip, port):
@@ -51,8 +56,8 @@ class Socks5Server(StreamRequestHandler):
 
         remote_sock = socket.socket(af, socktype, proto)
         try:
-            inf(ip)
-            inf(sa)
+            # inf(ip)
+            # inf(sa)
             remote_sock.connect((ip, port))
         except  (OSError, IOError) as e:
             err(e)
@@ -66,7 +71,7 @@ class Socks5Server(StreamRequestHandler):
         fdset = [local_sock, remote_sock]
         try:
             while True:
-                inf("selecting ... ")
+                # inf("selecting ... ")
                 r,w,e = select.select(fdset, [], [])
                 # print(r)
                 if local_sock in r:
@@ -99,38 +104,57 @@ class Socks5Server(StreamRequestHandler):
     def chat_local(self, local_sock, remote_sock):
         data = b''
         inf("server -> ")
-        data += local_sock.recv(8192)
+        data += local_sock.recv(BUF_MAX)
         if not data:
-            self._remote_sock.close()
-            local_sock.close()
+            self.close()
+            return
 
         seq, addr, port, payload = Enuma(data, p_hash)
-        sus("got payload :{} - {} ".format(seq, payload))
+        # sus("got payload :{} - {} ".format(seq, payload))
         self._seq = seq
         self._addr = addr
         self._port = port
         if self._remote_sock:
-            self._remote_sock.send(payload)
+            self._write(self._remote_sock, payload)
         else:
             self._remote_sock = self.create_remote(addr, port)
-            self._remote_sock.send(payload)
+            self._write(self._remote_sock,payload)
+        sseq(self._sseq, len(payload))
+        self._sseq += 1
 
     def chat_server(self, local_sock, remote_sock):
         data = b''
-        inf(" -> server")
+        sus(" -> server")
         try:
-            data += remote_sock.recv(8192)
+            data += remote_sock.recv(BUF_MAX)
+            seq(self._seq, len(data))
         except Exception as e:
             err("got error[118] : {}".format(e))
             remote_sock.close()
 
         if not data:
             self.close()
+            return
 
         # inf(data)
         payload = Elish(self._seq, self._addr, self._port, data, p_hash)
-        sus("got back : {} ".format(payload))
-        self.connection.sendall(payload)
+        # sus("got back : {} ".format(payload))
+        self._seq += 1
+        self._write(self.connection, payload)
+
+    def _write(self, sock, data):
+        uncomplete = False
+        try:
+            l = len(data)
+            s = sock.send(data)
+            if s < l:
+                data = data[s:]
+                uncomplete = True
+        except (OSError, IOError) as e:
+            err(e)
+            self.close()
+            return False
+        # self._write(sock, data)
     
     def close(self):
         self._remote_sock.close()

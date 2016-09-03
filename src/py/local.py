@@ -7,13 +7,13 @@ import time
 from socketserver import StreamRequestHandler, ThreadingTCPServer
 from termcolor import cprint
 
-from socks5.socks5_protocol import init_connect, request, inf, err, sus
-from socks5.socks5_protocol import *
+from socks5.socks5_protocol import init_connect, request 
+from utils import inf, err, sus, seq, sseq
 from enuma_elish.ea_protocol import Enuma, Elish
 
 host = ("127.0.0.1", 19090)
 p_hash = b'\xc1\x8aE\xdb'
-
+BUF_MAX = 65535
 class Socks5Local(StreamRequestHandler):
 
     def __init__(self, *args, **kargs):
@@ -21,6 +21,7 @@ class Socks5Local(StreamRequestHandler):
         self.addr = host
         self._tp, self._addr, self._port = [0, 0, 0]
         self._seq = 0
+        self._sseq = 0
         super(Socks5Local, self).__init__(*args, **kargs)
         
 
@@ -38,11 +39,13 @@ class Socks5Local(StreamRequestHandler):
             if not init_connect(sock):
                 raise Exception("init failed")
             remote = self.create_remote(self.addr[0], self.addr[1])
-            inf("first payload")
+            
             self._tp, self._addr, self._port = request(sock)
-            payload = sock.recv(8192)
+            payload = sock.recv(BUF_MAX)
+            sseq(self._seq, payload)
             data = Elish(self._tp, self._addr, self._port, payload, p_hash)
             remote.sendall(data)
+            self._sseq += 1
             
 
         except Exception as e:
@@ -55,7 +58,7 @@ class Socks5Local(StreamRequestHandler):
         fdset = [local_sock, remote_sock]
         try:
             while True:
-                inf("selecting ... ")
+                # inf("selecting ... ")
                 r,w,e = select.select(fdset, [], [])
                 # print(r)
                 if local_sock in r:
@@ -108,43 +111,69 @@ class Socks5Local(StreamRequestHandler):
             remote_sock.close()
 
 
+    def _write(self, sock, data):
+        uncomplete = False
+        try:
+            l = len(data)
+            s = sock.send(data)
+            if s < l:
+                data = data[s:]
+                uncomplete = True
+        except (OSError, IOError) as e:
+            err(e)
+            self.close()
+            return False
+        # self._write(sock, data)
+
 
     def chat_local(self, local_sock, remote_sock, p_hash):
         
-        self._seq += 1
+        inf("proxy -> local")
         # tp, addr, port = request(local_sock)
-        payload = local_sock.recv(8192)
-        sus("payload : {} ".format(payload))
+        payload = b''
+        payload += local_sock.recv(BUF_MAX)
+        if not payload:
+            self.close()
+            return
+
+        # sus("payload : {} ".format(payload))
+        
         data = Elish(self._tp, self._addr, self._port, payload, p_hash)
         
-        sus(data)
-        remote_sock.sendall(data)
-        sus("send ok")
-        inf("proxy -> local %d\r" % self._seq)
-
-        
+        # sus(data)
+        self._write(remote_sock, data)
+        sseq(self._sseq, len(payload))
+        self._sseq += 1        
 
 
     def chat_server(self, local_sock, remote_sock, p_hash):
-        inf("server -> local")
+        
         data = b''
 
         try:
-            data += remote_sock.recv(8192)
+            data += remote_sock.recv(BUF_MAX)
+            inf("local <- server")
+            # inf(data)
         except Exception as e:
             err("got error[118] : {}".format(e))
             remote_sock.close()
+        
         if not data:
+            inf("---- no data ----")
             self.close()
+            return
+        inf("len : %d " % len(data))
 
         _, addr, port, payload = Enuma(data, p_hash)
-        
-        inf("from server: {}".format(payload))
-        local_sock.sendall(payload)
+        seq(self._seq, len(payload))
+        # inf("from server: {}".format(payload))
+        self._write(local_sock,payload)
+        self._seq += 1
 
     def close(self):
-        self._remote_sock.close()
         self.connection.close()
+        self._remote_sock.close()
+        
 
 if __name__ == "__main__":
     try:
