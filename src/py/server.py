@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import sys
 import time
 import struct
@@ -13,10 +15,11 @@ from enuma_elish.ea_protocol import Enuma, Elish
 from utils import inf, err, sus, seq, sseq
 
 
-host = ("127.0.0.1", "1080")
+# host = ("127.0.0.1", "1080")
 timeout = 600
 p_hash = b'\xc1\x8aE\xdb'
 BUF_MAX = 65535
+SILCE_SIZE = 1448
 
 class Socks5Server(StreamRequestHandler):
     
@@ -146,15 +149,22 @@ class Socks5Server(StreamRequestHandler):
         uncomplete = False
         try:
             l = len(data)
-            s = sock.send(data)
-            if s < l:
-                data = data[s:]
+            sent = 0
+            if l > SILCE_SIZE:
+                sent = sock.send(data[:SILCE_SIZE])
+            else:
+                sent = sock.send(data)
+            sus("sent %d" % sent)
+            if sent < l:
+                data = data[sent:]
                 uncomplete = True
+
         except (OSError, IOError) as e:
             err(e)
             self.close()
             return False
-        # self._write(sock, data)
+        if uncomplete:
+            self._write(sock, data)
     
     def close(self):
         self._remote_sock.close()
@@ -163,7 +173,7 @@ class Socks5Server(StreamRequestHandler):
 
 if __name__ == "__main__":
     try:
-        server = ThreadingTCPServer(('', 19090), Socks5Server)
+        server = ThreadingTCPServer(('0.0.0.0', 19090), Socks5Server)
         server.serve_forever()
     except Exception as e:
         cprint(e,"red")

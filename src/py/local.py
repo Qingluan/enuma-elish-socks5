@@ -9,11 +9,12 @@ from termcolor import cprint
 
 from socks5.socks5_protocol import init_connect, request 
 from utils import inf, err, sus, seq, sseq
-from enuma_elish.ea_protocol import Enuma, Elish
+from enuma_elish.ea_protocol import Enuma, Elish, Enuma_len
 
-host = ("127.0.0.1", 19090)
+host = ("182.92.112.147", 19090)
 p_hash = b'\xc1\x8aE\xdb'
 BUF_MAX = 65535
+SLICE_SIZE = 1448
 class Socks5Local(StreamRequestHandler):
 
     def __init__(self, *args, **kargs):
@@ -151,11 +152,18 @@ class Socks5Local(StreamRequestHandler):
         data = b''
 
         try:
-            data += remote_sock.recv(BUF_MAX)
+            data += remote_sock.recv(SLICE_SIZE)
+            l = Enuma_len(data)
+            sus(">> %d" %l)
+            while 1:
+                inf(len(data))
+                if l > len(data):
+                    data += remote_sock.recv(SLICE_SIZE)
+
             inf("local <- server")
             # inf(data)
-        except Exception as e:
-            err("got error[118] : {}".format(e))
+        except (OSError, IOError) as e:
+            err("got error[164] : {}".format(e))
             remote_sock.close()
         
         if not data:
