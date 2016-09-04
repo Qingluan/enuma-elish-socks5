@@ -8,7 +8,7 @@ from socketserver import StreamRequestHandler, ThreadingTCPServer
 from termcolor import cprint
 
 from socks5.socks5_protocol import init_connect, request 
-from utils import inf, err, sus, seq, sseq
+from utils import inf, err, sus, seq, sseq, binf
 from enuma_elish.ea_protocol import Enuma, Elish, Enuma_len
 
 host = ("182.92.112.147", 19090)
@@ -153,13 +153,18 @@ class Socks5Local(StreamRequestHandler):
 
         try:
             data += remote_sock.recv(SLICE_SIZE)
-            l = Enuma_len(data)
-            sus(">> %d" %l)
+            l = Enuma_len(data) + 14 # 14 is meta data's len
+            # print(l)
+            sus("[All]: %d" %l)
             while 1:
-                inf(len(data))
+                binf(len(data))
+                # inf("p: {}".format(data))
                 if l > len(data):
+                    # err("ss")
                     data += remote_sock.recv(SLICE_SIZE)
-
+                else:
+                    break
+            
             inf("local <- server")
             # inf(data)
         except (OSError, IOError) as e:

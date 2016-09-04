@@ -17,7 +17,7 @@ typedef struct {
 
 
 def Enuma_len(data):
-    return unpack(">H", data[4:6])
+    return unpack(">H", data[4:6])[0]
 
 
 def Enuma(data, p_hash):
