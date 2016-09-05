@@ -130,7 +130,7 @@ class Socks5Server(StreamRequestHandler):
         sus(" -> server")
         try:
             data += remote_sock.recv(BUF_MAX)
-            seq(self._seq, len(data))
+            
         except Exception as e:
             err("got error[118] : {}".format(e))
             remote_sock.close()
@@ -141,6 +141,7 @@ class Socks5Server(StreamRequestHandler):
 
         # inf(data)
         payload = Elish(self._seq, self._addr, self._port, data, p_hash)
+        seq(self._seq, len(payload))
         # sus("got back : {} ".format(payload))
         self._seq += 1
         self._write(self.connection, payload)
