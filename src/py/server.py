@@ -11,9 +11,11 @@ from socketserver import StreamRequestHandler, ThreadingTCPServer
 from termcolor import cprint
 
 from socks5.socks5_protocol import init_connect, request
-from enuma_elish.ea_protocol import Enuma, Elish, Enuma_len
+from enuma_elish.ea_protocol import Enuma, Elish, Enuma_len, Chain_of_Heaven
 from eventloop import ELoop
-from utils import inf, err, sus, seq, sseq
+from auth import get_hash, get_config
+from utils import inf, err, sus, seq, sseq, to_bytes
+
 
 
 # host = ("127.0.0.1", "1080")
@@ -40,13 +42,37 @@ class Socks5Server(StreamRequestHandler):
         cprint("-------- "+ str(id(self))+" --------","red",end="\n\n")
         print('[%s] socks connection from %s' % (time.ctime(), self.client_address))
         sock = self.connection
+        
+
+        # sus("first payload : {} ".format(payload))
+        if self.chat_auth(sock):
+            self.chat_build(sock)
+
+        self.close()
+
+    def chat_auth(self, sock):
+        config = Socks5Server.config
+        data = sock.recv(1024)
+        hash_f = get_hash(config['hash'])
+        challenge = Chain_of_Heaven(data, 1, hash_f, config):
+        if reply:
+            sock.send(challenge)
+        data = sock.recv(1024)
+        init_p_hash_iv = Chain_of_Heaven(data, 2, hash_f, config, challenge)
+        if reply:
+            sock.send(init_p_hash_iv)
+            self.p_hash = hash_f(init_p_hash_iv + to_bytes(config['password']))
+
+        
+
+    def chat_build(self, sock):
         data = b''
         data += sock.recv(BUF_MAX)
         if not data:
             self.connection.close()
             return
+
         _, addr, port, payload = Enuma(data, p_hash)
-        # sus("first payload : {} ".format(payload))
         self._remote_sock = self.create_remote(addr, port)
         # inf("send first payload")
         sseq(self._seq, payload)
@@ -61,6 +87,7 @@ class Socks5Server(StreamRequestHandler):
 
         except (IOError, OSError) as e:
             self.close()
+
 
 
     def create_remote(self, ip, port):
@@ -206,6 +233,8 @@ class Socks5Server(StreamRequestHandler):
 
 if __name__ == "__main__":
     try:
+        config = get_config("templates.json")
+        Socks5Server.config = config
         server = ThreadingTCPServer(('0.0.0.0', 19090), Socks5Server, bind_and_activate=False)
         server.allow_reuse_address = True
         server.server_bind()

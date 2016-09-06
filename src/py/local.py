@@ -9,8 +9,9 @@ from termcolor import cprint
 
 from socks5.socks5_protocol import init_connect, request 
 from utils import inf, err, sus, seq, sseq, binf, wrn
-from enuma_elish.ea_protocol import Enuma, Elish, Enuma_len
+from enuma_elish.ea_protocol import Enuma, Elish, Enuma_len, Chain_of_Heaven
 from eventloop import ELoop
+from auth import get_hash, get_config
 
 host = ("182.92.112.147", 19090)
 p_hash = b'\xc1\x8aE\xdb'
@@ -54,6 +55,28 @@ class Socks5Local(StreamRequestHandler):
         self.p_hash = p_hash
         self.nodata_time = 0
 
+    def chat_auth(self, remote_sock):
+        config = Socks5Local.config
+        start = config['start']
+        hash_f = get_hash(config['hash'])
+        seq = random.randint(0, len(start))
+        start_rq = struct.pack("I", start[seq])
+        
+        remote_sock.send(start_rq)
+        chanllenge = remote_sock.recv(64)
+        if not chanllenge:
+            return False
+
+        hmac = Chain_of_Heaven(chanllenge, 3, hash_f, config)
+        remote_sock.send(hmac)
+
+        init_pass_iv = remote.recv(64)
+        if not init_pass_iv:
+            return False
+        self.p_hash = Chain_of_Heaven(init_pass_iv, 4, hash_f, config)
+        return True
+
+
     def handle(self):
         cprint("-------- "+ str(id(self))+" --------","red",end="\n\n")        
         sock = self.connection
@@ -68,6 +91,9 @@ class Socks5Local(StreamRequestHandler):
         if not init_connect(sock):
             raise Exception("init failed")
         remote = self.create_remote(self.addr[0], self.addr[1])
+        if not self.chat_auth(remote):
+            self.close()
+            return
         
         self._tp, self._addr, self._port = request(sock)
         payload = sock.recv(BUF_MAX)
@@ -267,6 +293,7 @@ if __name__ == "__main__":
     try:
         # eloop = ELoop()
         # Socks5Local.loop = eloop
+        config = get_config("templates.json")
         server = ThreadingTCPServer(('', 9090), Socks5Local)
         # eloop.loop()
         server.serve_forever()

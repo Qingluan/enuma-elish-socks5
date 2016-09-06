@@ -1,3 +1,4 @@
+import os
 from struct import unpack, pack
 from utils import err, sus
 
@@ -15,7 +16,46 @@ typedef struct {
 
 
 } EA;
+
+hash(start) -> server 
+challent -> local
+
+hash(challent || hash(passwd))  -> server 
+server verify
+init_password_iv -> local
+
+will set p_hash = hash(init_password_iv || password)
+
+
+challenge  4 byte
+hash(start) 4 byte
+init_password_iv  16 byte
 """
+
+def Chain_of_Heaven(data, stage, hash, config, challenge=None):
+    if stage == 1:
+        k = unpack("I", data[:4])
+        if k in config['start']:
+            return os.urandom(4)
+        else:
+            return False
+    elif stage == 2:
+        if challenge:
+            if data == hash(challenge + hash(to_bytes(config['password'])).digest()).hexdigest():
+                return os.urandom(16)
+            else:
+                return False
+        else:
+            return False
+    elif stage == 3:
+        return hash(data + hash(to_bytes(config['password'])).digest()).hexdigest()
+    elif stage == 4:
+        return hash(data + to_bytes(config['password'])).hexdigest()
+    else:
+        raise Exception("no such stage {}".format(stage))
+
+
+
 
 
 def Enuma_len(data):

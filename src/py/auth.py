@@ -23,6 +23,10 @@ def get_config(f):
         return None
 
 
+def get_hash(name):
+    return getattr(hashlib, name)
+
+
 def random_string(length):
     return os.urandom(length)
 
