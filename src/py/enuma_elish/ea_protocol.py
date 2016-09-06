@@ -48,7 +48,7 @@ def Chain_of_Heaven(data, stage, hash, config, challenge=None):
         else:
             return False
     elif stage == 3:
-        return hash(data + hash(to_bytes(config['password'])).digest()).hexdigest()
+        return hash(data + hash(to_bytes(config['password'])).digest()).digest()
     elif stage == 4:
         return hash(data + to_bytes(config['password'])).hexdigest()
     else:

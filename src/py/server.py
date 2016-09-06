@@ -52,16 +52,22 @@ class Socks5Server(StreamRequestHandler):
 
     def chat_auth(self, sock):
         config = Socks5Server.config
-        data = sock.recv(1024)
         hash_f = get_hash(config['hash'])
+        data = sock.recv(1024)
+        if not data:
+            return False
+        
         challenge = Chain_of_Heaven(data, 1, hash_f, config):
-        if reply:
+        if challenge:
             sock.send(challenge)
+        else:
+            return False
+        
         data = sock.recv(1024)
         init_p_hash_iv = Chain_of_Heaven(data, 2, hash_f, config, challenge)
         if reply:
             sock.send(init_p_hash_iv)
-            self.p_hash = hash_f(init_p_hash_iv + to_bytes(config['password']))
+            self.p_hash = hash_f(init_p_hash_iv + to_bytes(config['password'])).hexdigest()
 
         
 
