@@ -83,47 +83,10 @@ class Socks5Local(StreamRequestHandler):
         self.eventloop.add(remote, ELoop.IN | ELoop.ERR, self.chat_server, self._close)
         
         if not self.eventloop._starting:
-            sus("loop .... start")
+            # sus("loop .... start")
             # try:
             self.eventloop.loop()
-            # except Exception as e:
-            #     err("loop error")
-            #     self.close()
-
-        # except Exception as e:
-        #     #hosts.hosts.remove(addr)
-        #     err('Socket error: {}'.format(e))
-        #     self.close()
-        #     self.eventloop.stop()
-        #     return
-
-    def handle_chat(self, local_sock, remote_sock):
-        fdset = [local_sock, remote_sock]
-        try:
-            while True:
-                # inf("selecting ... ")
-                r,w,e = select.select(fdset, [], [])
-                # print(r)
-                if local_sock in r:
-                    # inf("local: ")
-                    try:
-                        self.chat_local(local_sock, remote_sock, self.p_hash)
-                    except Exception as e:
-                        cpritn(e, "red")
-                        break
-
-                if remote_sock in r:
-                    # inf("server: ")
-                    try:
-                        self.chat_server(local_sock, remote_sock, self.p_hash)
-                    except Exception as e:
-                        cpritn(e, "red")
-                        break
-        except:
-            pass
-        finally:
-            remote_sock.close()
-            local_sock.close()
+  
 
     def create_remote(self, ip, port):
 
@@ -148,7 +111,7 @@ class Socks5Local(StreamRequestHandler):
         
         try:
             remote_sock.connect(self.addr)
-            sus("remote connected")
+            # sus("remote connected")
         except (OSError, IOError) as e:
             err(e)
             remote_sock.close()
@@ -187,7 +150,7 @@ class Socks5Local(StreamRequestHandler):
 
     def chat_local(self, local_sock):
         
-        inf("proxy -> local")
+        # inf("proxy -> local")
         # tp, addr, port = request(local_sock)
         payload = b''
         payload += local_sock.recv(BUF_MAX)
@@ -215,72 +178,72 @@ class Socks5Local(StreamRequestHandler):
         data = self._read_data
         payload = b''
         plain = None
-        try:
+        # try:
 
-            data += remote_sock.recv(SLICE_SIZE)
+        data += remote_sock.recv(SLICE_SIZE)
 
-            if not data and self.nodata_time > 3:
-                self.close()
-                self.nodata_time = 0
+        if not data and self.nodata_time > 1:
+            self.close()
+            self.nodata_time = 0
 
-            if not data:
-                self.no_data_count()
-                time.sleep(0.5)
-                return 
-                
-
-            # sus(data)
-            if not self._read_data:
-                self.__l = Enuma_len(data) # 14 is meta data's len 
-                sus("[All]: %d" % self.__l)
-
-            self._read_data = data
-            # print(l)
+        if not data:
+            self.no_data_count()
+            time.sleep(0.5)
+            return 
             
-            if self.__l > len(data):
-                sus(len(data))
-                self.read_completed = False
-                # self.eventloop.add(remote_sock, ELoop.IN, self.chat_update)
+
+        # sus(data)
+        if not self._read_data:
+            self.__l = Enuma_len(data) # 14 is meta data's len 
+            sus("[data-len]: %d" % self.__l)
+
+        self._read_data = data
+        # print(l)
+        
+        if self.__l > len(data):
+            # sus(len(data))
+            self.read_completed = False
+            # self.eventloop.add(remote_sock, ELoop.IN, self.chat_update)
+            return
+        elif self.__l == len(data):
+            # sus("Just ok")
+            self.read_completed = True
+            self._read_data = b''
+            # inf("local <- server")
+            plain = Enuma(data, self.p_hash)
+            
+
+        else:
+            inf("over : %d - %d" % (len(data) ,self.__l))
+            # off = len(data) - self.__l
+            raw_bin = data[:self.__l]
+            
+            
+            plain = Enuma(raw_bin, self.p_hash)
+            # inf("local <- server")
+            self._read_data = data[self.__l:]
+            self.__l = Enuma_len(self._read_data)
+            sus("[over data-len]: %d" % self.__l)
+
+            # return
+
+
+        if not plain:
+                err("decode error")
+                self.close()
                 return
-            elif self.__l == len(data):
-                sus("Just ok")
-                self.read_completed = True
-                self._read_data = b''
-                inf("local <- server")
-                plain = Enuma(data, self.p_hash)
-                
-
-            else:
-                inf("over : %d - %d" % (len(data) ,self.__l))
-                # off = len(data) - self.__l
-                raw_bin = data[:self.__l]
-                
-                
-                plain = Enuma(raw_bin, self.p_hash)
-                inf("local <- server")
-                self._read_data = data[self.__l:]
-                self.__l = Enuma_len(self._read_data)
-                sus("[over All]: %d" % self.__l)
-
-                # return
-
-
-            if not plain:
-                    err("decode error")
-                    self.close()
-                    return
-            _, addr, port, payload = plain
-            seq(self._seq, len(payload))
-            self._write(self._local_sock, payload)
-            self._seq += 1
+        _, addr, port, payload = plain
+        seq(self._seq, len(payload))
+        self._write(self._local_sock, payload)
+        self._seq += 1
             
 
             
             
             # inf(data)
-        except (OSError, IOError) as e:
-            err("got error[240] : {}".format(e))
-            self.close()
+        # except (OSError, IOError) as e:
+            # err("got error[282] : {}".format(e))
+            # self.close()
         
         # if not data:
         #     inf("---- no data ----")

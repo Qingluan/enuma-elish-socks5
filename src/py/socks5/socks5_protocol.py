@@ -54,6 +54,8 @@ import socket
 from struct import pack, unpack
 from termcolor import cprint, colored
 
+__all__ = ["init_connect", "request"]
+
 TCP_REQUEST = 1
 UDP_ASSOCIA = 3
 

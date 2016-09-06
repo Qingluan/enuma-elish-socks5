@@ -1,6 +1,8 @@
 from struct import unpack, pack
 from utils import err, sus
 
+__all__ = ["Enuma_len", "Enuma", "Elish"]
+
 """
 typedef struct {
     u_char tp;  // 1 byte
@@ -26,7 +28,7 @@ def Enuma(data, p_hash):
     """
     password 's hash[:4]
     """
-    sus("got : %d" % len(data))
+    # sus("got : %d" % len(data))
     if not data:
         err(data)
         return False
@@ -50,13 +52,13 @@ def Enuma(data, p_hash):
     addr = data[6:6 + addr_len]
     payload = data[6 + addr_len:6 + addr_len + payload_len]
     checksum = data[6 + addr_len + payload_len: 6 + addr_len + payload_len + 4]
-    sus("----------------- check ----------------")
-    sus(list(checksum))
     checksum_int, = unpack("I", checksum)
-    sus("-----------------  FIN  ----------------")
+
+    sus("-- check --> {}".format(list(checksum)))
     if checksum_int == check ^ unpack("I", p_hash)[0]:
-        sus("decode ok")
+
         return tp, addr, port, payload
+    err("ea decode err")
     return False
 
 def Elish(tp, addr, port, payload, p_hash):
@@ -76,8 +78,9 @@ def Elish(tp, addr, port, payload, p_hash):
 
     check ^= unpack("I", p_hash)[0]
     # sus(list(checksum))
+    sus("-- uncheck --> {}".format(list(pack("I", check))))
     content += pack("I", check)
-    sus(list(content[-4:]))
+    
     # print(content)
     return content
 

@@ -4,10 +4,14 @@ from collections import defaultdict
 from functools import partial
 from termcolor import cprint, colored
 
-S_NULL = 0x00
-S_IN = 0x01
-S_OUT = 0x02
-S_ERR = 0x04
+from utils import err
+
+__all__ = ["ELoop", "NULL", "IN", "OUT", "ERR"]
+
+NULL = 0x00
+IN = 0x01
+OUT = 0x02
+ERR = 0x04
 
 err_log = lambda x, y: print("[%s] {} {}".format(colored(x, "yellow"), y) % colored("err", 'red'))
 
@@ -30,11 +34,11 @@ class ELoop:
         self._starting = False
 
     def _install(self, fd, mode):
-        if mode & S_IN:
+        if mode & IN:
             self._in_fd.add(fd)
-        if mode & S_OUT:
+        if mode & OUT:
             self._out_fd.add(fd)
-        if mode & S_ERR:
+        if mode & ERR:
             self._excep_fd.add(fd)
 
     def _uninstall(self, fd):
@@ -50,13 +54,21 @@ class ELoop:
         self._install(fd, mode)
 
     def _select(self, timeout):
-        _events = defaultdict(lambda:S_NULL)
+        _events = defaultdict(lambda:NULL)
         # err_log("test","a")
         # print(self._in_fd, self._out_fd, self._excep_fd, timeout)
-        r, w, x = select.select(self._in_fd, self._out_fd, self._excep_fd, timeout)
+        try:
+            r, w, x = select.select(self._in_fd, self._out_fd, self._excep_fd, timeout)
+            # err_log("event deatail", [r,w,x])
+        except ValueError as e:
+            err_log("clearn (-1) fd", e)
+            self._uninstall(-1)
+
+
+            return []
         # err_log("be", )
         # err_log("test","b")
-        for fds in [(r, S_IN), (w, S_OUT), (x, S_ERR)]:
+        for fds in [(r, IN), (w, OUT), (x, ERR)]:
             # err_log("test","c")
             for fd in fds[0]:
                 _events[fd] |= fds[1]
@@ -108,7 +120,7 @@ class ELoop:
             
             try:
                 events = self._select(timeout)
-                # cprint(events, "red")
+                # cprint(events, "red",end="\r")
             except (OSError, IOError) as e:
                 # print(e.errno)
                 if error(e) in (errno.EPIPE, errno.EINTR):
@@ -133,6 +145,7 @@ class ELoop:
 
                     except (OSError, IOError) as e:
                         err_log("event handling", e)
+                        sock.close()
                     # finally:
                     #     self.remove(sock)
                 else:
