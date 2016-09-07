@@ -1,11 +1,12 @@
 {
 	"server": "0.0.0.0",
-	"local": "127.0.0.0",
-	"server_port": 19091,
+	"local": "127.0.0.1",
+	"server_port": 19090,
 	"local_port": 9090,
 	"checksum": "sha256",
 	"method": "aes-256-cfb",
 	"password": "dark1",
 	"hash": "sha256",
-	"start": [12432, 23242, 5242, 15124, 1222,52461, 23125, 42415, 2323]
+	"start": [12432, 23242, 5242, 15124, 1222,52461, 23125, 42415, 2323],
+	"pools": "us2.qingluan.org:19090"
 }
