@@ -8,5 +8,5 @@
 	"password": "dark1",
 	"hash": "sha256",
 	"start": [12432, 23242, 5242, 15124, 1222,52461, 23125, 42415, 2323],
-	"pools": "us2.qingluan.org:19090"
+	"pools": "native.qingluan.org:19090"
 }
