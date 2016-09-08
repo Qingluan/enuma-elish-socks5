@@ -1,7 +1,8 @@
+import os,sys
 import argparse
-import os
 from functools import partial
 
+from Enuma_Elish.utils import inf
 from Enuma_Elish.auth import get_config
 from Enuma_Elish.daemon import run, stop
 from Enuma_Elish.server import init_server, BaseEAHandler, BaseEALHandler
@@ -27,6 +28,9 @@ def startServer(config):
     try:
         serv = init_server(config, BaseEAHandler)
         serv.serve_forever()
+    except KeyboardInterrupt:
+        inf("Exit")
+        sys.exit(0)
     except Exception as e:
         raise e
 
@@ -35,6 +39,9 @@ def startLocal(config):
     try:
         serv = init_server(config, BaseEALHandler, local=True)
         serv.serve_forever()
+    except KeyboardInterrupt:
+        inf("Exit")
+        sys.exit(0)
     except Exception as e:
         raise e
 
@@ -44,17 +51,22 @@ def main():
      this is process entry point
     """
     args = cmd()
-    config = get_config(args.config)
+    
 
     if args.dep:
         os.system("ls ")
 
-    service = partial(startLocal, config) if args.local else partial(startServer, config)
-    if args.start:
-        if args.daemon:
-            run(service)
-        else:
-            service()
-    elif args.stop:
-        stop(service)
+    try:
+        if args.start:
+            config = get_config(args.config)
+            service = partial(startLocal, config) if args.local else partial(startServer, config)
+            service.__name__ = "eelocal" if args.local else "eeserver"
+            if args.daemon:
+                run(service)
+            else:
+                service()
+        elif args.stop:
+            stop(service)
+    except KeyboardInterrupt:
+        inf("Exit")
     
