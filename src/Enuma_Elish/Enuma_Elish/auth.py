@@ -25,7 +25,7 @@ def get_config(f):
 
     else:
         err("no such file can be found")
-        return None
+        sys.exit(0)
 
 
 def get_hash(name):
