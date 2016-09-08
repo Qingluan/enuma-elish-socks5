@@ -4,7 +4,7 @@ from setuptools import setup, find_packages
 
 
 setup(name='Enuma_Elish',
-    version='0.6',
+    version='1.0',
     description='a ord vpn based on socks5 , then change some from ss',
     url='https://github.com/Qingluan/Enuma_Elish.git',
     author='Qing luan',
@@ -12,9 +12,9 @@ setup(name='Enuma_Elish',
     license='MIT',
     zip_safe=False,
     packages=find_packages(),
-    install_requires=['termcolor','simplejson', 'fabric'],
+    install_requires=['termcolor','simplejson', 'fabric3'],
     entry_points={
-    	'console_scripts': ['enuma-elish=cmd:main']
+    	'console_scripts': ['enuma-elish=Enuma_Elish.cmd:main']
     },
 
 )

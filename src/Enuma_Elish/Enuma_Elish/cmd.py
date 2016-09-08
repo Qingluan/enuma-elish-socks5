@@ -2,7 +2,7 @@ import argparse
 import os
 from functools import partial
 
-from Enuma_Elish.utils import get_config
+from Enuma_Elish.auth import get_config
 from Enuma_Elish.daemon import start, stop
 from Enuma_Elish.server import init_server, BaseEAHandler, BaseEALHandler
 
@@ -15,9 +15,9 @@ def cmd():
     """
     parser = argparse.ArgumentParser(usage="how to use this", description=DOC)
     parser.add_argument("-c", "--config", default="/etc/enuma_elish.json", help="specify config path")
-    parser.add_argument("-D", "--daemon" default=False, help="daemon mode")
-    parser.add_argument("-d", "--dep" default=False, action="store_true", help="deploy a enuma-elish on remote server")
-    parser.add_argument("-L", "--local" default=False, action="store_true", help="start enuma-elish local serivce, default start server serivce")
+    parser.add_argument("-D", "--daemon", default=False, action="store_true", help="daemon mode")
+    parser.add_argument("-d", "--dep", default=False, action="store_true", help="deploy a enuma-elish on remote server")
+    parser.add_argument("-L", "--local", default=False, action="store_true", help="start enuma-elish local serivce, default start server serivce")
     parser.add_argument("start", default=False, action="store_true", help="start server")
     parser.add_argument("stop", default=False, action="store_true", help="stop server")
     return parser.parse_args()
