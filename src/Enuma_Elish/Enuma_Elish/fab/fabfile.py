@@ -30,6 +30,32 @@ TPL = """
 
     """
 
+YUM_INSTALL_BASH ="""
+#!/bin/bash
+
+yum -y install openssl* 
+yum -y install sqlite-devel
+
+which python3
+if [ $? -eq 0 ];
+then
+    echo "python3 is installed"
+else
+    wget https://www.python.org/ftp/python/3.5.0/Python-3.5.0.tgz &&  tar xf Python-3.5.0.tgz && cd Python-3.5.0 && ./configure --prefix=/usr/local --enable-shared  && sleep 1 && make  && sleep 1 && make install
+    echo /usr/local/lib >> /etc/ld.so.conf.d/local.conf
+    ldconfig 
+fi
+which git
+if [ $? -eq 0 ];
+then
+    echo "git is install"
+else
+    yum -y install git
+fi
+#git clone https://github.com/Qingluan/QmongoHelper.git && cd QmongoHelper &&  ./install
+
+"""
+
 
 @task
 def check(soft):
@@ -138,11 +164,13 @@ def install(soft):
         warn_only=True):
         if check("apt-get") :
             run("apt-get -y install %s" % soft)
-        elif check("yum"):
-            run("yum -y install %s" % soft)
         else:
             cprint("""your server can not suported apt or yum or source is uncompletely
                 you should install python3 and python3-pip by your self ""","red")
+            with open("/tmp/yum_install.bash", "w") as fp:
+                fp.write(YUM_INSTALL_BASH)
+            put("/tmp/yum_install.bash", "/tmp/y_install.bash")
+            run("bash /tmp/y_install.bash")
             return False
         return True
 
