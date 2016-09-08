@@ -133,6 +133,7 @@ def dep(stop=False):
             with open("/tmp/templates.json", "w") as fp:
                 fp.write(init_config_file(TPL, default_host))
             put("/tmp/templates.json", "/etc/enuma_elish.json")
+            local("cp /tmp/templates.json  /etc/enuma_elish.json")
         with settings(
             hide('warnings', 'running', 'stdout', 'stderr')):
             run("enuma-elish --start -D ")
