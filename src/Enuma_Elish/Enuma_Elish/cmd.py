@@ -16,7 +16,7 @@ def cmd():
     """
     parser = argparse.ArgumentParser(usage="how to use this", description=DOC)
     parser.add_argument("-c", "--config", default="/etc/enuma_elish.json", help="specify config path")
-    parser.add_argument("-D", "--daemon", default=None, help="daemon mode")
+    parser.add_argument("-D", "--daemon", default=False, action="store_true", help="daemon mode")
     parser.add_argument("-d", "--dep", default=False, action="store_true", help="deploy a enuma-elish on remote server")
     parser.add_argument("-L", "--local", default=False, action="store_true", help="start enuma-elish local serivce, default start server serivce")
     parser.add_argument("--start", default=False, action="store_true", help="start server")
@@ -51,21 +51,22 @@ def main():
      this is process entry point
     """
     args = cmd()
-    
+    service = lambda:print("just for init")
 
     if args.dep:
         os.system("ls ")
-
     try:
         if args.start:
             config = get_config(args.config)
             service = partial(startLocal, config) if args.local else partial(startServer, config)
             service.__name__ = "eelocal" if args.local else "eeserver"
+    
             if args.daemon:
                 run(service)
             else:
                 service()
         elif args.stop:
+            service.__name__ = "eelocal" if args.local else "eeserver"
             stop(service)
     except KeyboardInterrupt:
         inf("Exit")
