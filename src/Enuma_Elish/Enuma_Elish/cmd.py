@@ -3,7 +3,7 @@ import argparse
 from functools import partial
 from fabric.api import execute
 
-from Enuma_Elish.fab import dep
+from Enuma_Elish.fab.fabfile import dep
 from Enuma_Elish.utils import inf
 from Enuma_Elish.auth import get_config
 from Enuma_Elish.daemon import run, stop
@@ -58,7 +58,7 @@ def main():
     if args.dep:
         execute(dep)
         sys.exit(0)
-        
+
     try:
         if args.start:
             config = get_config(args.config)
