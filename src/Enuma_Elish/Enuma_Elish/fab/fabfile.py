@@ -24,7 +24,7 @@ TPL = """
     "method": "{method}",
     "password": "{password}",
     "hash": "{hash}",
-    "start": "[{rqs}]",
+    "start": [{rqs}],
     "pools": "{ip}:{port}"
 |<-
 
