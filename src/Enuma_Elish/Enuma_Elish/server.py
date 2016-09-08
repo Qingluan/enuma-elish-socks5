@@ -283,6 +283,7 @@ class BaseEALHandler(StreamRequestHandler):
         if not init_connect(sock):
             raise Exception("init failed")
         self._tp, self._addr, self._port = request(sock)
+        sus(self._addr)
         self.R_s, self.R_p = self.config['pools'].split(':')
         self.R_p = int(self.R_p)
 
@@ -325,13 +326,13 @@ class BaseEALHandler(StreamRequestHandler):
 
     def chat_auth(self, remote_sock):
         config = self.config
-        
+        random_bytes = os.urandom(random.randint(10, 30))
         hash_f = get_hash(config['hash'])
         
         start_rq = Chain_of_Heaven(None, 0, hash_f, config)
         
         # try:
-        remote_sock.send(start_rq)
+        remote_sock.send(start_rq + random_bytes)
         cprint(start_rq, "yellow", attrs=['bold'])
         challenge = remote_sock.recv(64)
         cprint(challenge, "yellow", attrs=['bold'])

@@ -61,8 +61,8 @@ def run(func):
     LOG_F = os.path.join("/var/log/", func.__name__ + ".log")
     ERROR_F = os.path.join("/var/log/", func.__name__ + ".error.log")
     try:
-        print(func.__name__, colored("[start]", "green", attrs=['blink']))
         daemonize(PID_F, stdout=LOG_F, stderr=ERROR_F)
+        print(func.__name__, colored("[start]", "green", attrs=['blink']))
     except RuntimeError as e:
         cprint(e, "red", file=sys.stderr)
         raise SystemExit(1)

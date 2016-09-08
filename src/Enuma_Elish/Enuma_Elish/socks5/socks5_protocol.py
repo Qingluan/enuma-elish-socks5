@@ -107,7 +107,7 @@ def request(sock, dns_local=False, log=True):
 
     domain = data[3]
     host_len = data[4] #  just correct in domain == 3
-    ip_or_host = socket.inet_ntoa(data[4:8]) #  just correct in domain == 1
+    ip_or_host = socket.inet_ntoa(data[4:8]).encode("utf8") #  just correct in domain == 1
     port, = unpack(">H", data[8:10]) # just correct in domain == 1
 
     if domain == DOMAIN_HOST:
