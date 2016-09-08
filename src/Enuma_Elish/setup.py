@@ -12,7 +12,10 @@ setup(name='Enuma_Elish',
     license='MIT',
     zip_safe=False,
     packages=find_packages(),
-    install_requires=['termcolor','simplejson'],
+    install_requires=['termcolor','simplejson', 'fabric'],
+    entry_points={
+    	'console_scripts': ['enuma-elish=cmd:main']
+    },
 
 )
 

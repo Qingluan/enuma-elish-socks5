@@ -559,8 +559,7 @@ class BaseEALHandler(StreamRequestHandler):
         self._remote_sock.close()
 
 
-def init_server(config_file, Handler, local=False):
-    config = get_config(config_file)
+def init_server(config, Handler, local=False):
     Handler.config = config
     server_ip = config['server']
     server_port = int(config['server_port'])
@@ -580,7 +579,8 @@ def init_server(config_file, Handler, local=False):
 
 if __name__ == "__main__":
     try:
-        server = init_server("templates.json", BaseEAHandler)
+        config = get_config("templates.json")
+        server = init_server(config, BaseEAHandler)
         server.serve_forever()
     except Exception as e:
         cprint(e,"red")
