@@ -64,12 +64,6 @@ def Chain_of_Heaven(data, stage, hash, config, challenge=None):
 
 
 
-def invisible_air(data, stage, config):
-    if stage == 0:
-        return b''
-
-
-
 def Enuma_len(data, seq=False):
     pay_len = unpack(">H", data[4:6])[0]
     add_len = data[1]

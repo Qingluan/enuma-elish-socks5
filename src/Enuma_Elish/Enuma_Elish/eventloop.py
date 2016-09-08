@@ -1,3 +1,4 @@
+import time
 import select
 import errno
 from collections import defaultdict
@@ -82,6 +83,7 @@ class ELoop:
         self._install(fd, mode)
         self._handlers[fd] = (f, handler)
         self._error_call[fd] = (f, error_callback)
+        self._uninstall(-1) # check if some sock is dead
 
     def remove(self, f):
         fd = f.fileno()
@@ -111,7 +113,7 @@ class ELoop:
     def start(self):
         self._starting = True
 
-    def loop(self, timeout=600):
+    def loop(self, timeout=6000):
         self._starting = True
         events = []
         # err_log_no_method = partial(err_log, "callback")
@@ -127,8 +129,8 @@ class ELoop:
                     self.err_log("select", e)
                     
                 elif error(e) == errno.EBADF:
-                    self.err_log("BAD FILE D", e)
-                    self.reset()
+                    self.err_log("BAD FILE D events", self._in_fd)
+                    # self.reset()
                     self.stop()
                     break
 
@@ -138,14 +140,18 @@ class ELoop:
                     continue
 
             for fd,  event in events:
-                sock, handler = self._handlers.get(fd)
-                if handler:
+                res = self._handlers.get(fd)
+                if res:
+                    sock, handler = res
+                
                     try:
                         handler(sock)
 
                     except (OSError, IOError) as e:
+                        self._uninstall(-1)
+                        self.change(sock, handler)
                         err_log("event handling", e)
-                        sock.close()
+                        # sock.close()
                     # finally:
                     #     self.remove(sock)
                 else:
