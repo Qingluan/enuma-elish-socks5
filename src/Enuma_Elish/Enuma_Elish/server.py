@@ -102,10 +102,10 @@ class BaseEAHandler(StreamRequestHandler):
             self._remote_sock = self.create_remote(addr, port)
             wrn("resend packet to real")
 
-            self.loop.add(self._remote_sock, ELoop.OUT |ELoop.ERR, self.resend, self._close)
+            self.loop.add(self._remote_sock, ELoop.OUT , self.resend)
         try:
-            self.loop.add(sock, ELoop.IN | ELoop.ERR, self.chat_local, self._close)
-            self.loop.add(self._remote_sock, ELoop.IN | ELoop.ERR , self.chat_server, self._close)
+            self.loop.add(sock, ELoop.IN , self.chat_local)
+            self.loop.add(self._remote_sock, ELoop.IN , self.chat_server)
             if not self.loop._starting:
                 self.loop.loop()
 
@@ -200,7 +200,7 @@ class BaseEAHandler(StreamRequestHandler):
                 self._un_send_payload.append(payload)
                 self.loop._uninstall(-1)
                 self._remote_sock = self.create_remote(addr, port)
-                self.loop.add(self._remote_sock, ELoop.OUT | ELoop.ERR, self.resend, self._close)
+                self.loop.add(self._remote_sock, ELoop.OUT , self.resend, )
 
         else:
             self._remote_sock = self.create_remote(addr, port)
@@ -276,10 +276,11 @@ class BaseEAHandler(StreamRequestHandler):
     def close(self):
         try:
             err("disconnected from remote")
+            self.loop.remove(self._remote_sock)
+            self.loop.remove(self.connection)
             self._remote_sock.close()
             self.connection.close()
-            self.loop._uninstall(-1)
-            self.loop._uninstall(-1)
+            
         except AttributeError:
             pass
 
@@ -416,8 +417,8 @@ class BaseEALHandler(StreamRequestHandler):
         
         # if fd is ERR condition will call second function
 
-        self.eventloop.add(sock, ELoop.IN | ELoop.ERR , self.chat_local, self._close)
-        self.eventloop.add(remote, ELoop.IN | ELoop.ERR, self.chat_server, self._close)
+        self.eventloop.add(sock, ELoop.IN  , self.chat_local)
+        self.eventloop.add(remote, ELoop.IN , self.chat_server)
 
         if not self.eventloop._starting:
             # sus("loop .... start")
@@ -536,16 +537,15 @@ class BaseEALHandler(StreamRequestHandler):
         except (IOError, OSError) as e:
             inf("remote closed , need reopen")
             remote = self.create_remote(self.R_s, self.R_p)
-            self.eventloop.add(remote, ELoop.IN | ELoop.ERR ,self.chat_server, self._close)
+            self.eventloop.add(remote, ELoop.IN  ,self.chat_server)
             return 
 
-        if not data and self.nodata_time > 1:
-            self.close()
-            self.nodata_time = 0
 
         if not data:
-            self.no_data_count()
-            time.sleep(0.5)
+            # self.no_data_count()
+            # time.sleep(0.5)
+            wrn("from server is over")
+            self.close()
             return 
             
 
@@ -622,8 +622,11 @@ class BaseEALHandler(StreamRequestHandler):
         sock.close()
 
     def close(self):
+        self.eventloop.remove(self._remote_sock)
+        self.eventloop.remove(self.connection)
         self.connection.close()
         self._remote_sock.close()
+        
 
 
 def init_server(config, Handler, local=False):
