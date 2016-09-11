@@ -1,6 +1,7 @@
 import time
 import select
 import errno
+import queue
 from collections import defaultdict
 from functools import partial
 from termcolor import cprint, colored
@@ -37,6 +38,9 @@ class ELoop:
         self.err_log = err_log
         self._starting = False
         self._handled_fds = []
+        # self._handlers = set()
+
+
 
     def _install(self, fd, mode):
         if mode & IN:
@@ -199,11 +203,6 @@ class ELoop:
 
 
             # self._handlers.clear()
-
-
-
-
-
     
     def close(self):
         self._stopping = True
@@ -211,6 +210,119 @@ class ELoop:
 
     def __del__(self):
         self.close()
+
+
+class Events:
+    def __init__(self):
+        self._in_fd = set()
+        self._out_fd = set()
+        self._excep_fd = set()
+        # self._server_fd = set()
+        self._handlers = set()
+        self._fds = [self._in_fd, self._out_fd, self._excep_fd]
+
+    def install(self, fd, direction, handler=None):
+        if direction & IN:
+            self._in_fd.add(fd)
+        if direction & OUT:
+            self._out_fd.add(fd)
+        if direction & ERR:
+            self._excep_fd.add(fd)
+
+        if handler:
+            self._handlers.add((direction, hadnler))
+
+    def push_callback(self, direction, handler):
+        self._handlers.add((direction, handler))
+
+    def clear_handlers(self, handlers):
+        cleared = False
+        need_cleared = []
+        for d,h  in self._handlers:
+            if h in handlers:
+                need_cleared.append((d, h))
+        
+        for i in need_cleared:
+            self._handlers.remove(i)
+
+
+    def uninstall(self, fd):
+        for fd_col in self._fds:
+            if fd in fd_col:
+                fd_col.remove(fd)
+
+    def reinstall(self, fd, direction):
+        self.uninstall(fd)
+        self.install(fd, direction)
+
+    def _select(self, timeout):
+        r, w, x = select.select(self._in_fd, self._out_fd, self._excep_fd, timeout)
+
+        _events = defaultdict(lambda: NULL)
+        
+        for fds in [(r, IN), (w, OUT), (x, ERR)]:
+            # err_log("test","c")
+            for fd in fds[0]:
+                _events[fd] |= fds[1]
+
+        return _events.items()
+
+    def poll(self, timeout):
+        events = self._select(timeout)
+
+
+class SLoop:
+    def __init__(self):
+        self.e = Events()
+        self.f_ready_to_hand = {}
+        self.ready_removed_handlers = []
+
+    def put(self, f, direction, handler = None):
+        fd = f.fileno()
+        self.f_ready_to_hand[fd] = f
+        self.e.install(fd, direction, handler)
+
+    def clear(self, f):
+        fd = f.fileno()
+        del self.f_ready_to_hand[fd]
+        self.e.uninstall(fd)
+
+    def poll(self, timeout):
+        es = self._select(timeout)
+        return [(self.f_ready_to_hand[fd], fd, event) for fd, event in es]
+
+    def remove_handler(self, handler):
+        self.ready_removed_handlers.append(handler)
+
+    def check_clear(self):
+        if self.ready_removed_handlers:
+            self.e.clear_handlers(self.ready_removed_handlers):
+        
+        self.ready_removed_handlers = []
+
+    def run(self):
+        events = []
+        while self.e._handlers:
+            try:
+                events = self.poll(1)
+            except (IOError, OSError) as e:
+                if error(e) in (errno.EPIPE, errno.EINTR):
+                    err_log("poll err: %s" % e)
+                else:
+                    continue
+
+            for mode, handler in self.e._handlers:
+
+                for f, fd, direction in events:
+                    if direction & mode:
+                        handler(f, direction)
+                    else:
+                        continue
+            self.check_clear()
+
+
+
+
 
 
 def error(e):
