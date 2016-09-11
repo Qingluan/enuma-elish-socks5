@@ -4,7 +4,7 @@ from setuptools import setup, find_packages
 
 
 setup(name='Enuma_Elish',
-    version='2.2',
+    version='2.3',
     description='a ord vpn based on socks5 , then change some from ss',
     url='https://github.com/Qingluan/Enuma_Elish.git',
     author='Qing luan',

@@ -13,6 +13,7 @@ NULL = 0x00
 IN = 0x01
 OUT = 0x02
 ERR = 0x04
+SERVER = 0x08
 
 err_log = lambda x, y: print("[%s] {} {}".format(colored(x, "yellow"), y) % colored("err", 'red'))
 
@@ -24,11 +25,13 @@ class ELoop:
     IN = 0x01
     OUT = 0x02
     ERR = 0x04
+    SERVER = 0x08
 
     def __init__(self, errlog=err_log):
         self._in_fd = set()
         self._out_fd = set()
         self._excep_fd = set()
+        self._server_fd = set()
         self._handlers = defaultdict(lambda: None)
         self._error_call = defaultdict(lambda: None)
         self.err_log = err_log
@@ -38,6 +41,9 @@ class ELoop:
     def _install(self, fd, mode):
         if mode & IN:
             self._in_fd.add(fd)
+            if mode & SERVER:
+                self._server_fd.add(fd)
+
         if mode & OUT:
             self._out_fd.add(fd)
         if mode & ERR:
@@ -74,6 +80,11 @@ class ELoop:
             # err_log("test","c")
             for fd in fds[0]:
                 _events[fd] |= fds[1]
+
+                # filter all server fd
+                if fds[1] & IN:
+                    if fd in self._server_fd:
+                        _events[fd] |= SERVER
 
         return _events.items()
         # err_log("event", d)
