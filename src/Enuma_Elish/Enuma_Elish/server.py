@@ -9,6 +9,7 @@ import os
 import random
 from socketserver import StreamRequestHandler, ThreadingTCPServer
 from termcolor import cprint
+from collections import defaultdict
 
 from Enuma_Elish.socks5.socks5_protocol import init_connect, request
 from Enuma_Elish.enuma_elish.ea_protocol import Enuma, Elish, Enuma_len, Chain_of_Heaven
@@ -25,6 +26,23 @@ BUF_MAX = 65535
 
 SLICE_SIZE = 1448
 BUF_SIZE = 8096
+
+class DNS:
+    host = defaultdict(lambda : False)
+
+    def __init__(self):
+        pass
+
+    def __getitem__(self, k):
+        return DNS.host[k]
+
+    def add(self, host, ip):
+        DNS.host[host] = ip
+
+    def __call__(self):
+        return DNS.host.keys()
+
+
 class BaseEAHandler(StreamRequestHandler):
     
     def __init__(self, *args, **kargs):
@@ -38,21 +56,23 @@ class BaseEAHandler(StreamRequestHandler):
         self._read_data = b''
         self._uncompleted = False
         self._un_send_payload = []
+        self.dns = DNS()
         super(BaseEAHandler, self).__init__(*args, **kargs)
 
     def handle(self):
         cprint("-------- "+ str(id(self))+" --------","red",end="\n\n")
         print('[%s] socks connection from %s' % (time.ctime(), self.client_address))
         sock = self.connection
+
+        try:
+            if self.chat_auth(sock):
+                sus("auth ok")
+                self.chat_build(sock)
+
+            self.connection.send(nothing_true())
+        except (IOError, OSError) as e:
+            err(e)
         
-
-        # sus("first payload : {} ".format(payload))
-        if self.chat_auth(sock):
-            sus("auth ok")
-            self.chat_build(sock)
-
-        self.connection.send(nothing_true())
-        self.close()
 
     def chat_auth(self, sock):
         config = self.config
@@ -91,7 +111,7 @@ class BaseEAHandler(StreamRequestHandler):
         _, addr, port, payload = Enuma(data, self.p_hash, int_seq=self._sseq)
         self._remote_sock = self.create_remote(addr, port)
         # inf("send first payload")
-        sseq(self._seq, len(payload))
+        # sseq(self._seq, len(payload))
         self._seq += 1
         self._sseq += 1
         try:
@@ -157,9 +177,9 @@ class BaseEAHandler(StreamRequestHandler):
         # inf(data)
         if not data:
             err("need close this connection")
-            self.loop._uninstall(-1)
             self._read_data = b''
             self.close()
+            self.loop._uninstall(local_sock.fileno())
             return
 
         if not self._read_data:
@@ -206,7 +226,7 @@ class BaseEAHandler(StreamRequestHandler):
             self._remote_sock = self.create_remote(addr, port)
             self._remote_sock.send(payload)
         print("\n")
-        sseq(self._sseq, len(payload))
+        # sseq(self._sseq, len(payload))
         self._sseq += 1
 
     def chat_server(self, remote_sock):
@@ -214,21 +234,20 @@ class BaseEAHandler(StreamRequestHandler):
         # sus(" -> server")
         try:
             data += remote_sock.recv(BUF_MAX)
-            
         except Exception as e:
             err("got error[118] : {}".format(e))
-            remote_sock.close()
 
         if not data:
             # inf("no data")
-            self.close()
+            remote_sock.close()
+            self.loop._uninstall(remote_sock.fileno())
+
             return
 
         # inf(data)
         data = self.en(data)
         payload = Elish(self._seq, self._addr, self._port, data, self.p_hash)
-        seq(self._seq, len(payload))
-        # sus("got back : {} ".format(payload))
+        # seq(self._seq, len(payload))
         self._seq += 1
         payload = self.callback(payload, 0)
         self._write(self.connection, payload)
@@ -244,7 +263,8 @@ class BaseEAHandler(StreamRequestHandler):
         if direction == 0:
             return self.invisible(data)
         else:
-            return self.visible(data)
+            fix, test_data = self.visible(data)
+            return test_data
 
     def _write(self, sock, data, server=False):
         uncomplete = False
@@ -258,10 +278,7 @@ class BaseEAHandler(StreamRequestHandler):
                 sent = sock.send(data[:BUF_SIZE])
             else:
                 sent = sock.send(data)
-            # sus("sent %d" % sent)
-            
 
-            # cprint("%%%f" % ((float(sent) / l) * 100),"cyan",attrs=["bold"], end="\r")
             if sent < l:
                 data = data[sent:]
                 uncomplete = True
@@ -275,7 +292,7 @@ class BaseEAHandler(StreamRequestHandler):
     
     def close(self):
         try:
-            err("disconnected from remote")
+            err("disconnected from remote {}-{}".format(self._remote_sock.fileno(), self.connection.fileno()))
             self._remote_sock.close()
             self.connection.close()
             self.loop._uninstall(-1)
@@ -322,6 +339,7 @@ class BaseEALHandler(StreamRequestHandler):
         self._l = 0
         self.p_hash = None
         self.nodata_time = 0
+        self.dns = DNS()
         
 
         super(BaseEALHandler, self).__init__(*args, **kargs)
@@ -338,11 +356,11 @@ class BaseEALHandler(StreamRequestHandler):
         cprint("-------- "+ str(id(self))+" --------","red",end="\n\n")        
         sock = self.connection
         self._local_sock = sock
-        print('[%s] socks connection from %s' % (time.ctime(), self.client_address))
+        # print('[%s] socks connection from %s' % (time.ctime(), self.client_address))
         
         # socks5 part
         self.socks5handprotocol(sock)
-        sus("socks5 check ok")
+        # sus("socks5 check ok")
         
         # tmp build a connection to remote server
         remote = self.create_remote(self.R_s, self.R_p)
@@ -408,7 +426,7 @@ class BaseEALHandler(StreamRequestHandler):
 
     def chat_build(self, sock, remote):
         payload = sock.recv(BUF_MAX)
-        sseq(self._seq, payload)
+        # sseq(self._seq, payload)
         data = Elish(self._tp, self._addr, self._port, payload, self.p_hash, int_seq=self._sseq)
         
         remote.send(data)
@@ -436,11 +454,13 @@ class BaseEALHandler(StreamRequestHandler):
         if direction == 0:
             return self.invisible(data)
         else:
-            return self.visible(data)        
+            fix, test = self.visible(data)
+            return test
   
 
     def create_remote(self, ip, port):
-
+        print(ip, port)
+        real_ip = 
         addrs = socket.getaddrinfo(ip, port, 0, socket.SOCK_STREAM,
                                    socket.SOL_TCP)
         if len(addrs) == 0:
@@ -455,7 +475,7 @@ class BaseEALHandler(StreamRequestHandler):
             # sus("remote connected")
         except (OSError, IOError) as e:
             err(e)
-            remote_sock.close()
+            # remote_sock.close()
 
         self._remote_sock = remote_sock
 
@@ -509,6 +529,7 @@ class BaseEALHandler(StreamRequestHandler):
         # inf(payload)
         if not payload:
             self.close()
+            self.eventloop._uninstall(local_sock.fileno())
             return
 
         # encrypt
@@ -519,7 +540,7 @@ class BaseEALHandler(StreamRequestHandler):
         if self._write(self._remote_sock, data) < 0:
             self.close()
             err("err send to server")
-        sseq(self._sseq, len(payload))
+        # sseq(self._sseq, len(payload))
         self._sseq += 1
 
 
@@ -539,13 +560,13 @@ class BaseEALHandler(StreamRequestHandler):
             self.eventloop.add(remote, ELoop.IN | ELoop.ERR ,self.chat_server, self._close)
             return 
 
-        if not data and self.nodata_time > 1:
-            self.close()
-            self.nodata_time = 0
+        # if not data and self.nodata_time > 1:
+        #     remote_sock.close()
+        #     self.eventloop._uninstall(remote_sock.fileno())
+        #     self.nodata_time = 0
 
         if not data:
-            self.no_data_count()
-            time.sleep(0.5)
+            self.close()
             return 
             
 
@@ -553,7 +574,7 @@ class BaseEALHandler(StreamRequestHandler):
         if not self._read_data:
             self.__l = Enuma_len(data[9:]) # 14 is meta data's len 
             self._l = self.__l + 234
-            sus("[data-len]: %d" % self.__l)
+            # sus("[data-len]: %d" % self.__l)
 
         self._read_data = data
         # print(l)
@@ -573,7 +594,7 @@ class BaseEALHandler(StreamRequestHandler):
             
 
         else:
-            inf("over : %d - %d" % (len(data) ,self.__l))
+            # inf("over : %d - %d" % (len(data) ,self.__l))
             # off = len(data) - self.__l
             raw_bin = data[:self._l]
             
@@ -583,7 +604,7 @@ class BaseEALHandler(StreamRequestHandler):
             self._read_data = data[self._l:]
             self.__l = Enuma_len(self._read_data[9:])
             self._l = self.__l + 234
-            sus("[over data-len]: %d" % self.__l)
+            # sus("[over data-len]: %d" % self.__l)
 
             # return
 
@@ -593,7 +614,7 @@ class BaseEALHandler(StreamRequestHandler):
                 self.close()
                 return
         _, addr, port, payload = plain
-        seq(self._seq, len(payload))
+        # seq(self._seq, len(payload))
 
         # decrypt
         payload = self.de(payload)
@@ -624,6 +645,8 @@ class BaseEALHandler(StreamRequestHandler):
     def close(self):
         self.connection.close()
         self._remote_sock.close()
+        self.eventloop._uninstall(self.connection.fileno())
+        self.eventloop._uninstall(self._remote_sock.fileno())
 
 
 def init_server(config, Handler, local=False):

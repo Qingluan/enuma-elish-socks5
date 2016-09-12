@@ -1,5 +1,5 @@
 import time
-from Enuma_Elish.utils import err
+from Enuma_Elish.utils import err, inf
 from struct import pack, unpack
 
 bag_head = b'GET /'
@@ -7,17 +7,22 @@ bag_tail = b' HTTP/1.0\r\nUser-Agent: w3m/0.5.3\r\nAccept: text/html, text/*;q=0
 BAG_LEN = 234
 
 def invisible_air(data, stage):
+    
     if stage == 0:
         l = pack("I", len(data))
         return bag_head + l + data + bag_tail
     elif stage == 1:
+        fix = 0
         if data[:3] == b'GET':
             l, = unpack("I", data[5:9])
-            return data[9:l+9]
+            return fix, data[9:l+9]
         elif data[:20].find(b'GET') != -1:
-            i = data.find(b'GET')
-            l, = unpack("I", data[5+i: 9+ i])
-            return data[9+i: l+9+i]
+
+            fix = data.find(b'GET')
+            inf("off: {} ".format(fix))
+            inf(data)
+            l, = unpack("I", data[5+fix: 9+ fix])
+            return fix, data[9+ fix: l+9+ fix]
         else:
             err("such data is urgly")
             err(data)

@@ -81,13 +81,13 @@ inf = lambda x: print("[{}]: {}".format(colored("in", "cyan"), x))
 # just no authenticate in socks5 in another way
 def init_connect(sock, auth=False): 
     data = sock.recv(257) # consider all padding  1 + 1 + 255
-    inf(data)
+    # inf(data)
     if not data :
         sock.close()
         err("init")
         return False
     sock.send(INIT_CMD)
-    sus("init ok")
+    # sus("init ok")
     return True
 
 
@@ -117,7 +117,7 @@ def request(sock, dns_local=False, log=True):
             pass
         port, = unpack(">H", data[5+host_len: 7+host_len])
 
-    inf("{}| {}:{}".format(tp[ip_type], ip_or_host, port))
+    # inf("{}| {}:{}".format(tp[ip_type], ip_or_host, port))
     sock.send(OK_CMD)
     return ip_type, ip_or_host, port
 
