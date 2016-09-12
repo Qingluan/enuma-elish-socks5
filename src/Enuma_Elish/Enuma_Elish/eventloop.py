@@ -33,6 +33,7 @@ class ELoop:
         self._error_call = defaultdict(lambda: None)
         self.err_log = err_log
         self._starting = False
+        self._handled_fds = []
 
     def _install(self, fd, mode):
         if mode & IN:
@@ -86,9 +87,26 @@ class ELoop:
         self._uninstall(-1) # check if some sock is dead
 
     def remove(self, f):
+        # print(self._in_fd)
         fd = f.fileno()
+        if fd != -1:
+            try:
+                del self._handlers[fd]
+            except KeyError:
+                err_log(fd, self._handlers.keys())
+
         self._uninstall(fd)
-        del self._handlers[fd]
+        # print(self._in_fd)
+
+    def _get_handler_fd(self):
+        return self._handlers.keys()
+        
+    def clear_handlers(self):
+        fds = self._get_handler_fd()
+        for fd in fds:
+            if fd not in self._in_fd and fd not in self._out_fd and fd not in self._excep_fd:
+                del self._handlers[fd]
+
 
     def change(self, fd, mode=None, handler=None):
         sock = fd.fileno()
@@ -118,7 +136,7 @@ class ELoop:
         events = []
         # err_log_no_method = partial(err_log, "callback")
 
-        while self._starting:
+        while self._handlers:
             
             try:
                 events = self._select(timeout)
@@ -139,7 +157,14 @@ class ELoop:
                     self.err_log("erro", e)
                     continue
 
+
             for fd,  event in events:
+                if fd == -1:
+                
+                    err_log("fd -1 ")
+                    self._uninstall(-1)
+                    continue
+
                 res = self._handlers.get(fd)
                 if res:
                     sock, handler = res
@@ -148,14 +173,22 @@ class ELoop:
                         handler(sock)
 
                     except (OSError, IOError) as e:
-                        self._uninstall(-1)
-                        self.change(sock, handler)
-                        err_log("event handling", e)
+                        if error(e) in (errno.EPIPE, errno.EINTR):
+                            err_log("poll " ,e)
+                        else:
+                            err_log("event handling", e)
+                            continue
                         # sock.close()
                     # finally:
                     #     self.remove(sock)
-                else:
-                    err("no event method can be callback")
+
+            if -1 in self._handlers:
+                err_log("del dead handler", self._handlers.items())
+                del self._handlers[-1]
+
+
+            # self._handlers.clear()
+
 
 
 
