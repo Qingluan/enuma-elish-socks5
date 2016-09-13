@@ -292,13 +292,9 @@ class BaseEAHandler(StreamRequestHandler):
     
     def close(self):
         try:
-<<<<<<< HEAD
-            err("disconnected from remote {}-{}".format(self._remote_sock.fileno(), self.connection.fileno()))
-=======
             err("disconnected from remote")
             self.loop.remove(self._remote_sock)
             self.loop.remove(self.connection)
->>>>>>> a46d5044015e1549da1b0f9ee75b30703ba19117
             self._remote_sock.close()
             self.connection.close()
             

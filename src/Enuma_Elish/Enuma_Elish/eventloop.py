@@ -296,7 +296,7 @@ class SLoop:
 
     def check_clear(self):
         if self.ready_removed_handlers:
-            self.e.clear_handlers(self.ready_removed_handlers):
+            self.e.clear_handlers(self.ready_removed_handlers)
         
         self.ready_removed_handlers = []
 

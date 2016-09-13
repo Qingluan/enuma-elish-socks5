@@ -8,7 +8,8 @@ from Enuma_Elish.utils import inf
 from Enuma_Elish.auth import get_config
 from Enuma_Elish.daemon import run, stop
 from Enuma_Elish.server import init_server, BaseEAHandler, BaseEALHandler
-
+from Enuma_Elish.relayserver import TRelay, TCPConnection
+from Enuma_Elish.eventloop import SLoop
 
 def cmd():
     DOC = """
@@ -23,6 +24,7 @@ def cmd():
     parser.add_argument("-L", "--local", default=False, action="store_true", help="start enuma-elish local serivce, default start server serivce")
     parser.add_argument("--start", default=False, action="store_true", help="start server")
     parser.add_argument("--stop", default=False, action="store_true", help="stop server")
+    parser.add_argument("-e", "--event", default=False, action="store_true", help="event mode")
     return parser.parse_args()
 
 
@@ -58,6 +60,14 @@ def main():
     if args.dep:
         execute(dep)
         sys.exit(0)
+
+    if args.event:
+        if args.start:
+            config = get_config(args.config)
+            loop = SLoop()
+            server = TRelay(config, TCPConnection, is_local=args.local)
+            server.add_loop(loop)
+            loop.run()
 
     try:
         if args.start:
