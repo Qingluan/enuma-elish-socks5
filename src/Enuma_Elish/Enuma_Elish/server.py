@@ -461,11 +461,19 @@ class BaseEALHandler(StreamRequestHandler):
 
     def create_remote(self, ip, port):
         print(ip, port)
-        real_ip = 
-        addrs = socket.getaddrinfo(ip, port, 0, socket.SOCK_STREAM,
-                                   socket.SOL_TCP)
+        real_ip = self.dns[ip]
+        addrs = None
+        if not real_ip:
+            addrs = socket.getaddrinfo(ip, port, 0, socket.SOCK_STREAM,
+                               socket.SOL_TCP)
+        else:
+            addrs = socket.getaddrinfo(real_ip, port, 0, socket.SOCK_STREAM,
+                               socket.SOL_TCP)
+        if not real_ip:
+            self.dns.add(ip, addrs[0][0][0])
         if len(addrs) == 0:
             raise Exception("getaddrinfo failed for %s:%d" % (ip, port))
+
         af, socktype, proto, canonname, sa = addrs[0]
 
         remote_sock = socket.socket(af, socktype, proto)

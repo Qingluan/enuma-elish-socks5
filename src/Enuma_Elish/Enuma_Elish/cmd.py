@@ -8,7 +8,7 @@ from Enuma_Elish.utils import inf
 from Enuma_Elish.auth import get_config
 from Enuma_Elish.daemon import run, stop
 from Enuma_Elish.server import init_server, BaseEAHandler, BaseEALHandler
-from Enuma_Elish.relayserver import TRelay, TCPConnection
+from Enuma_Elish.relayservers import TRelay, TCPConnection
 from Enuma_Elish.eventloop import SLoop
 
 def cmd():
@@ -64,10 +64,15 @@ def main():
     if args.event:
         if args.start:
             config = get_config(args.config)
+            inf("got config")
             loop = SLoop()
+            print(args.local)
             server = TRelay(config, TCPConnection, is_local=args.local)
+            inf("server start")
             server.add_loop(loop)
+            inf("loop init")
             loop.run()
+        sys.exit(0)
 
     try:
         if args.start:

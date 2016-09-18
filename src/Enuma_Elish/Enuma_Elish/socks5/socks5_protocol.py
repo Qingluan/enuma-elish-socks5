@@ -93,8 +93,10 @@ def init_connect(sock, auth=False):
 
 def request(sock, dns_local=False, log=True):
     data = sock.recv(2048)
+    if not data:
+        return False, False, False
     # inf(data)
-
+    cprint("REQUEST : {} ".format(data), "yellow")
     version = data[0]
     if version != 5:
         err("not right VER")

@@ -6,7 +6,7 @@ from collections import defaultdict
 from functools import partial
 from termcolor import cprint, colored
 
-from Enuma_Elish.utils import err
+from Enuma_Elish.utils import err, inf, sus
 
 __all__ = ["ELoop", "NULL", "IN", "OUT", "ERR"]
 
@@ -14,7 +14,7 @@ NULL = 0x00
 IN = 0x01
 OUT = 0x02
 ERR = 0x04
-SERVER = 0x08
+SERVER = 0x08 | IN
 
 err_log = lambda x, y: print("[%s] {} {}".format(colored(x, "yellow"), y) % colored("err", 'red'))
 
@@ -230,7 +230,7 @@ class Events:
             self._excep_fd.add(fd)
 
         if handler:
-            self._handlers.add((direction, hadnler))
+            self._handlers.add((direction, handler))
 
     def push_callback(self, direction, handler):
         self._handlers.add((direction, handler))
@@ -257,7 +257,8 @@ class Events:
 
     def _select(self, timeout):
         r, w, x = select.select(self._in_fd, self._out_fd, self._excep_fd, timeout)
-
+        # cprint(w, "green")
+        cprint(self._fds,"blue", end="\r")
         _events = defaultdict(lambda: NULL)
         
         for fds in [(r, IN), (w, OUT), (x, ERR)]:
@@ -276,19 +277,33 @@ class SLoop:
         self.e = Events()
         self.f_ready_to_hand = {}
         self.ready_removed_handlers = []
+        self._need_add_handlers = []
 
-    def put(self, f, direction, handler = None):
+    def put(self, f, direction, handler=None):
         fd = f.fileno()
         self.f_ready_to_hand[fd] = f
-        self.e.install(fd, direction, handler)
+        self.e.install(fd, direction)
+
+        if handler:
+            self._need_add_handlers.append((direction, handler))
+        
+
+    def put_handler(self, direction, handler):
+        self.e.push_callback(direction, handler)
+
+    def put_ready_handler(self, direction, handler):
+        self._need_add_handlers.append((direction, handler))
 
     def clear(self, f):
         fd = f.fileno()
-        del self.f_ready_to_hand[fd]
+        try:
+            del self.f_ready_to_hand[fd]
+        except KeyError as e:
+            err_log("keyerror", e)
         self.e.uninstall(fd)
 
     def poll(self, timeout):
-        es = self._select(timeout)
+        es = self.e._select(timeout)
         return [(self.f_ready_to_hand[fd], fd, event) for fd, event in es]
 
     def remove_handler(self, handler):
@@ -297,28 +312,40 @@ class SLoop:
     def check_clear(self):
         if self.ready_removed_handlers:
             self.e.clear_handlers(self.ready_removed_handlers)
-        
         self.ready_removed_handlers = []
+
+    def change(self, f, direction):
+        fd = f.fileno()
+        self.e.reinstall(fd, direction)
+        print(" ---- - -- -- - - - - -- - ")
+        cprint(self.e._fds, "magenta")
 
     def run(self):
         events = []
         while self.e._handlers:
             try:
                 events = self.poll(1)
+
+                # inf(events)
             except (IOError, OSError) as e:
                 if error(e) in (errno.EPIPE, errno.EINTR):
                     err_log("poll err: %s" % e)
                 else:
                     continue
 
+            # print(self.e._handlers)
             for mode, handler in self.e._handlers:
 
                 for f, fd, direction in events:
                     if direction & mode:
+                        # print(fd, f)
                         handler(f, direction)
                     else:
                         continue
             self.check_clear()
+            for i in self._need_add_handlers:
+                self.e.push_callback(*i)
+            self._need_add_handlers = []
 
 
 
