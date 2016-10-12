@@ -574,7 +574,6 @@ class BaseEALHandler(StreamRequestHandler):
             # self.no_data_count()
             # time.sleep(0.5)
             wrn("from server is over")
-
             self.close()
             return 
             
@@ -657,6 +656,8 @@ class BaseEALHandler(StreamRequestHandler):
         self.connection.close()
         self._remote_sock.close()
 
+        self.eventloop._uninstall(self.connection.fileno())
+        self.eventloop._uninstall(self._remote_sock.fileno())
 
 
 def init_server(config, Handler, local=False):
