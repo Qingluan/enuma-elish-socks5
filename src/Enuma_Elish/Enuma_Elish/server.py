@@ -470,7 +470,7 @@ class BaseEALHandler(StreamRequestHandler):
             addrs = socket.getaddrinfo(real_ip, port, 0, socket.SOCK_STREAM,
                                socket.SOL_TCP)
         if not real_ip:
-            self.dns.add(ip, addrs[0][0][0])
+            self.dns.add(ip, addrs[0][-1][0])
         if len(addrs) == 0:
             raise Exception("getaddrinfo failed for %s:%d" % (ip, port))
 
